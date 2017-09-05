@@ -13,6 +13,9 @@
 #include <image_transport/image_transport.h>
 #include <image_geometry/pinhole_camera_model.h>
 #include <cv_bridge/cv_bridge.h>
+#include <rpuck_msgs/TagDetection.h>
+#include <rpuck_msgs/TagDetectionArray.h>
+
 
 #ifdef WITH_KNOWLEDGE
 #include <liboro/oro.h>
@@ -77,5 +80,7 @@ private:
 
     void findMarkers(const sensor_msgs::ImageConstPtr& msg,
                      const sensor_msgs::CameraInfoConstPtr& camerainfo);
+
+    ros::Publisher tag_pub;
 };
 

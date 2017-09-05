@@ -38,6 +38,7 @@ ChilitagsDetector::ChilitagsDetector(ros::NodeHandle& rosNode,
 
     if(tagSize!=USE_CHILITAGS_DEFAULT_PARAM)
         chilitags3d.setDefaultTagSize(tagSize); // use specified value
+    tag_pub = rosNode.advertise<rpuck_msgs::TagDetectionArray>("tag_array", 5);
 
 }
 
@@ -87,7 +88,7 @@ void ChilitagsDetector::findMarkers(const sensor_msgs::ImageConstPtr& msg,
         *                      Markers detection                           *
         ********************************************************************/
 
-    auto foundObjects = chilitags3d.estimate(inputImage);
+    auto foundObjects = chilitags3d.estimate(inputImage, chilitags::Chilitags::TRACK_AND_DETECT);
     ROS_INFO_STREAM(foundObjects.size() << " objects found.");
 
     /****************************************************************
@@ -98,7 +99,7 @@ void ChilitagsDetector::findMarkers(const sensor_msgs::ImageConstPtr& msg,
     auto previouslySeen(objectsSeen);
 #endif
     objectsSeen.clear();
-
+    rpuck_msgs::TagDetectionArray tag_array_msg;
     for (auto& kv : foundObjects) {
 
         objectsSeen.insert(kv.first);
@@ -110,8 +111,23 @@ void ChilitagsDetector::findMarkers(const sensor_msgs::ImageConstPtr& msg,
                                         ros::Time::now() + ros::Duration(TRANSFORM_FUTURE_DATING), 
                                         cameramodel.tfFrame(),
                                         kv.first));
+        rpuck_msgs::TagDetection det;
+        det.name = kv.first;
+        det.header.frame_id = cameramodel.tfFrame();
+        det.header.stamp = ros::Time::now() + ros::Duration(TRANSFORM_FUTURE_DATING);
+        det.pose.header.frame_id = cameramodel.tfFrame();
+        det.pose.header.stamp = ros::Time::now() + ros::Duration(TRANSFORM_FUTURE_DATING);
+        det.pose.pose.position.x = transform.getOrigin().getX();
+        det.pose.pose.position.y = transform.getOrigin().getY();
+        det.pose.pose.position.z = transform.getOrigin().getZ();
+        det.pose.pose.orientation.x = transform.getRotation().getX();
+        det.pose.pose.orientation.y = transform.getRotation().getY();
+        det.pose.pose.orientation.z = transform.getRotation().getZ();
+        det.pose.pose.orientation.w = transform.getRotation().getW();
+        tag_array_msg.detections.push_back(det);
     }
 
+    tag_pub.publish(tag_array_msg);
 #ifdef WITH_KNOWLEDGE
     set<oro::Statement> stmts;
     for(const auto& obj : objectsSeen) {
